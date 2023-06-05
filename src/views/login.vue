@@ -17,7 +17,6 @@
                                             <ion-col class="p-3">
                                                 <ion-input class="w-100" clear-input type="text" placeholder="Email"
                                                     v-model="email">
-
                                                     <slot name="start">
                                                         <ion-icon :icon="mailOutline" size="large" class="mr-2" />
                                                     </slot>
