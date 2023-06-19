@@ -7,20 +7,17 @@
         <ion-label>Home</ion-label>
       </ion-tab-button>
 
-      <ion-tab-button tab="transaction" href="/transaction">
+      <ion-tab-button class="mr-12" tab="transaction" href="/transaction">
         <ion-icon aria-hidden="true" :icon="wallet" />
         <ion-label>Transaksi</ion-label>
       </ion-tab-button>
-      <ion-fab-button @click="openModal" expand="block">
-        <ion-icon aria-hidden="true" :icon="add" />
-      </ion-fab-button>
 
-      <ion-tab-button tab="plan" href="/plan">
+      <ion-tab-button tab="plan" class="ml-12" href="/plan">
         <ion-icon aria-hidden="true" :icon="browsers" />
         <ion-label>Anggaran</ion-label>
       </ion-tab-button>
 
-      <ion-tab-button tab="profile" href="/profile">
+      <ion-tab-button tab="profile" href="/account">
         <ion-icon aria-hidden="true" :icon="person" />
         <ion-label>Akun</ion-label>
       </ion-tab-button>
@@ -30,7 +27,6 @@
 
 <script lang="ts" setup>
 import { ref } from "vue";
-import Modal from "./Modal.vue";
 import {
   IonTabBar,
   IonTabButton,
@@ -38,28 +34,6 @@ import {
   IonLabel,
   IonIcon,
   IonRouterOutlet,
-  modalController,
 } from "@ionic/vue";
 import { wallet, add, browsers, person, home } from "ionicons/icons";
-
-let message = ref("testing message");
-let modalOpen = false;
-
-let openModal = async () => {
-  if (modalOpen) return;
-  modalOpen = true;
-  const modal = await modalController.create({
-    component: Modal,
-  });
-  modal.present();
-
-  modal.onWillDismiss().then(({ data, role }) => {
-    alert(role);
-
-    if (role === "confirm") {
-      message.value = `Hello, ${data}!`;
-    }
-    modalOpen = false;
-  });
-};
 </script>

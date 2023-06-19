@@ -2,6 +2,29 @@
 http://ionicframework.com/docs/theming/ */
 @import url('https://fonts.googleapis.com/css2?family=Heebo&family=Poppins&display=swap');
 
+/* Semua elemen */
+* {
+  scrollbar-width: thin; /* Untuk Firefox */
+  scrollbar-color: transparent transparent; /* Untuk Firefox */
+}
+
+/* Webkit (Chrome, Safari) */
+::-webkit-scrollbar {
+  width: 6px; /* Lebar scrollbar */
+  background-color: transparent; /* Warna latar belakang scrollbar */
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: transparent; /* Warna thumb scrollbar */
+}
+
+/* Firefox */
+html {
+  scrollbar-width: thin; /* Lebar scrollbar */
+  scrollbar-color: transparent transparent; /* Warna thumb scrollbar */
+}
+
+
 :root {
   --ion-font-family: 'Poppins';
   /** primary **/
