@@ -27,9 +27,10 @@
 <script setup>
 import { IonItem, IonLabel, IonIcon } from "@ionic/vue";
 import { eye, notifications, helpCircle, eyeOffOutline } from "ionicons/icons";
-import { ref } from "vue";
+import { ref, onMounted } from "vue";
+import axios from 'axios';
 
-let saldo = ref(105353053);
+let saldo = ref(0);
 let saldoView = ref(false);
 
 function formatRibuan(angka) {
@@ -39,6 +40,20 @@ function formatRibuan(angka) {
 let handleSaldo = () => {
   saldoView.value = !saldoView.value;
 };
+
+onMounted(async () => {
+  try {
+    const token = localStorage.getItem('authToken');
+    const response = await axios.get('http://localhost:5000/api/v1/user', {
+      headers: {
+        Authorization: `${token}`
+      }
+    });
+    saldo.value = response.data.saldo;
+  } catch (error) {
+    console.error('Failed to fetch saldo', error);
+  }
+});
 </script>
 <style scoped>
 ion-label h1 {
