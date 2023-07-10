@@ -17,34 +17,37 @@
                 src="https://ionicframework.com/docs/img/demos/avatar.svg"
               />
             </ion-avatar>
-            <ion-label> Dian Setiawan </ion-label>
-            <small>diansetiawan2121@gmail.com</small>
+            <ion-label>{{ user.name }}</ion-label>
+            <small>{{ user.email }}</small>
           </div>
         </ion-item>
-        <ion-item button detail="true" :detailIcon="caretForwardOutline">
-          <ion-label>
-            <h3>Akun</h3>
-            <p>Klik untuk mengubah info akun</p>
-          </ion-label>
-        </ion-item>
-        <ion-item button detail="true" :detailIcon="caretForwardOutline">
+        <ion-item button detail="true" :detailIcon="caretForwardOutline" @click="openModal('Tentang')">
           <ion-label>
             <h3>Tentang</h3>
             <p>Tentang aplikasi ini</p>
           </ion-label>
         </ion-item>
-        <ion-item button detail="true" :detailIcon="caretForwardOutline">
+        <ion-item button detail="true" :detailIcon="caretForwardOutline" @click="logout">
           <ion-label>
             <h3>Logout</h3>
             <p>Keluar dari akun anda</p>
           </ion-label>
         </ion-item>
       </ion-list>
+
+      <ion-modal :is-open="showModal" backdrop-dismiss>
+        <ion-content>
+          <div class="ion-padding">
+            <p>{{ modalContent }}</p>
+          </div>
+        </ion-content>
+      </ion-modal>
     </ion-content>
   </ion-page>
 </template>
 
-<script lang="ts" setup>
+<script setup>
+import { ref, onMounted } from 'vue';
 import {
   IonPage,
   IonHeader,
@@ -55,13 +58,53 @@ import {
   IonLabel,
   IonList,
   IonAvatar,
-} from "@ionic/vue";
+  IonModal,
+} from '@ionic/vue';
 import {
   chevronDownOutline,
   add,
   walletOutline,
   caretForwardOutline,
-} from "ionicons/icons";
+} from 'ionicons/icons';
+import axios from 'axios';
 
-import ProgressBar from "@/components/ProgressBar.vue";
+const showModal = ref(false);
+const modalTitle = ref('');
+const modalContent = ref('');
+const user = ref({});
+
+const openModal = (title) => {
+  if (title === 'Tentang') {
+    modalTitle.value = 'Tentang';
+    modalContent.value = 'Aplikasi Perencanaan dan Pengelolaan Uang Pribadi adalah sebuah aplikasi yang dirancang untuk membantu pengguna dalam mengelola keuangan pribadi mereka dengan lebih efektif.';
+  }
+  showModal.value = true;
+};
+
+const logout = () => {
+  localStorage.removeItem('authToken');
+  window.location.href = '/login';
+};
+
+const fetchUserInfo = async () => {
+  try {
+    const authToken = localStorage.getItem('authToken');
+    const response = await axios.get('http://localhost:5000/api/v1/user', {
+      headers: {
+        Authorization: authToken,
+      },
+    });
+    user.value = response.data;
+  } catch (error) {
+    console.error(error);
+    if (error.response && error.response.status === 401) {
+      // Redirect ke halaman login jika status response adalah 401 (Unauthorized)
+      window.location.href = '/login';
+    }
+  }
+};
+
+onMounted(async () => {
+  await fetchUserInfo();
+});
 </script>

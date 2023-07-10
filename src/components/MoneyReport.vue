@@ -2,7 +2,6 @@
   <div>
     <div class="report">
       <h1>Laporan Pengeluaran</h1>
-      <a href="">Lihat semua</a>
     </div>
     <ion-card>
       <ion-card-content>
@@ -15,17 +14,22 @@
           </ion-segment-button>
         </ion-segment>
         <div class="report-detail">
-          <h1>Rp. {{ formatRibuan(totalExpenses) }}</h1>
+          <h1>Rp. {{ formatRibuan(totalExpenses[0] + totalExpenses[1]) }}</h1>
           <span>Total pembelanjaan {{ selectedSegmentLabel }} ini</span>
-          <span class="percentage">
-            <ion-icon aria-hidden="true" :icon="removeCircle" />
-            {{ expensesPercentage }}%
-          </span>
-          <Bar id="my-chart-id" :options="chartOptions" :data="chartData" />
+          <Bar
+            v-if="loaded"
+            id="my-chart-id"
+            :options="chartOptions"
+            :data="chartData"
+          />
         </div>
         <div class="top-expenses">
           <h1>Pengeluaran Teratas</h1>
-          <div v-for="expense in topExpenses" :key="expense.category" class="expense">
+          <div
+            v-for="expense in topExpenses"
+            :key="expense.category"
+            class="expense"
+          >
             <div>
               <img :src="expense.icon" alt="food" />
               <span>
@@ -46,6 +50,7 @@ import { ref, onMounted } from "vue";
 import { IonLabel, IonIcon, IonSegment, IonSegmentButton } from "@ionic/vue";
 import { removeCircle } from "ionicons/icons";
 import moment from "moment";
+import axios from "axios";
 
 import { Bar } from "vue-chartjs";
 import {
@@ -71,65 +76,76 @@ const chartOptions = ref({
   responsive: true,
 });
 
-const chartValue = ref([]);
-
 const chartData = ref({
   labels: ["Minggu Lalu", "Minggu Ini"],
   datasets: [
     {
-      data: chartValue,
+      label: ["Laporan Pengeluaran"],
+      data: [],
       backgroundColor: "red", // Mengubah warna latar belakang
       borderColor: "black", // Mengubah warna garis batas
     },
   ],
 });
-
 const selectedSegment = ref("minggu");
 const selectedSegmentLabel = ref("Minggu");
-const totalExpenses = ref(0);
-const expensesPercentage = ref(0);
+const totalExpenses = ref([]);
 const topExpenses = ref([]);
-
+const loaded = ref(false);
 
 const fetchData = async () => {
-  const requestOptions = {
-    method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: localStorage.getItem("authToken"),
-    },
-    // body: JSON.stringify({
-    //   startDate: "2023-07-01",
-    //   endDate: "2023-07-05",
-    // }),
-  };
+  const token = localStorage.getItem("authToken");
 
-  const response = await fetch(
-    "http://localhost:5000/api/v1/expense/last-week",
-    requestOptions
-  );
-  const data = await response.json();
+  try {
+    const responseCurrentWeek = await axios.post(
+      "http://localhost:5000/api/v1/expense/last-week",
+      null,
+      {
+        headers: {
+          Authorization: `${token}`,
+        },
+      }
+    );
+    const responseLastWeek = await axios.post(
+      "http://localhost:5000/api/v1/expense/last-week",
+      {
+        startDate: "2023-07-01",
+        endDate: "2023-07-05",
+      },
+      {
+        headers: {
+          Authorization: `${token}`,
+        },
+      }
+    );
+    const dataCurrent = responseCurrentWeek.data;
+    const dataLast = responseLastWeek.data;
 
-  totalExpenses.value = calculateTotalExpenses(data, selectedSegment.value);
-  expensesPercentage.value = calculateExpensesPercentage(
-    data,
-    "lastWeek",
-    selectedSegment.value === "minggu" ? "currentWeek" : "currentMonth"
-  );
-  topExpenses.value = getTopExpenses(data, 3);
-  
-  chartValue.value = [calculateTotalExpenses(data, "lastWeek"), totalExpenses.value];
+    totalExpenses.value[0] = calculateTotalExpenses(dataLast);
+    totalExpenses.value[1] = calculateTotalExpenses(dataCurrent);
+    topExpenses.value = getTopExpenses([...dataLast, ...dataCurrent], 3);
+    chartData.value.datasets[0].data = [
+      totalExpenses.value[0],
+      totalExpenses.value[1],
+    ];
 
-  console.log(chartData.value)
+    loaded.value = true;
+  } catch (error) {
+    console.log(error);
+    if (error.response && error.response.status === 401) {
+      // Redirect ke halaman login jika status response adalah 401 (Unauthorized)
+      window.location.href = "/login";
+    }
+  }
 };
 
 function formatRibuan(angka) {
   return angka.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
 }
 
-const calculateTotalExpenses = (expenses, period) => {
-  const startDate = moment().subtract(period === "currentWeek" ? 0 : 1, "week");
-  const endDate = moment().endOf('day');
+const calculateTotalExpenses = (expenses) => {
+  const startDate = moment().subtract(2, "week");
+  const endDate = moment().endOf("day");
 
   const total = expenses.reduce((acc, expense) => {
     const expenseDate = moment(expense.date);
@@ -142,22 +158,9 @@ const calculateTotalExpenses = (expenses, period) => {
   return total;
 };
 
-const calculateExpensesPercentage = (expenses, period1, period2) => {
-  const total1 = calculateTotalExpenses(expenses, period1);
-  const total2 = calculateTotalExpenses(expenses, period2);
-
-  if (total2 === 0) {
-    return 0;
-  }
-
-  const percentage = ((total1 - total2) / total2) * 100;
-
-  return percentage.toFixed(2);
-};
-
 const getTopExpenses = (expenses, limit) => {
-  const startDate = moment().subtract(1, "week");
-  const endDate = moment().endOf('day');
+  const startDate = moment().subtract(2, "week");
+  const endDate = moment().endOf("day");
 
   const filteredExpenses = expenses.filter((expense) => {
     const expenseDate = moment(expense.date);
@@ -179,8 +182,11 @@ const getTopExpenses = (expenses, limit) => {
 
   const topExpenses = sortedExpenses.slice(0, limit).map((entry) => {
     const [category, amount] = entry;
-    const percentage = ((amount / calculateTotalExpenses(expenses, "lastWeek")) * 100).toFixed(2);
-    const icon = getCategoryIcon(category); // Mengambil ikon berdasarkan kategori
+    const percentage = (
+      (amount / calculateTotalExpenses(expenses, "lastWeek")) *
+      100
+    ).toFixed(2);
+    const icon = getCategoryIcon(category);
 
     return { category, amount, percentage, icon };
   });
@@ -197,7 +203,7 @@ const getCategoryIcon = (category) => {
     // Tambahkan pemetaan ikon untuk kategori lainnya
   };
 
-  return categoryIconMap[category] || "https://example.com/default-icon.png";
+  return categoryIconMap[category];
 };
 
 const segmentChanged = (event) => {
@@ -212,8 +218,7 @@ onMounted(() => {
 });
 </script>
 
-<style scoped> 
-
+<style scoped>
 ion-card-content,
 ion-card {
   margin: 5px 16px;
@@ -263,7 +268,7 @@ ion-card {
   margin-top: 24px;
 }
 
-.top-expenses h1{
+.top-expenses h1 {
   color: black;
   font-size: 16px;
   font-weight: 900;
@@ -294,5 +299,4 @@ ion-card {
 .expense h6 {
   font-weight: 800;
 }
-
 </style>

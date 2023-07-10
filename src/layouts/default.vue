@@ -23,7 +23,9 @@
           <ion-item>
             <ion-label>Tipe</ion-label>
             <ion-select v-model="type">
-              <ion-select-option value="pengeluaran">Pengeluaran</ion-select-option>
+              <ion-select-option value="pengeluaran"
+                >Pengeluaran</ion-select-option
+              >
               <ion-select-option value="pemasukan">Pemasukan</ion-select-option>
             </ion-select>
           </ion-item>
@@ -40,16 +42,20 @@
           <ion-item v-if="type === 'pengeluaran'">
             <ion-label>Kategori</ion-label>
             <ion-select v-model="category">
-              <ion-select-option value="food">Makanan</ion-select-option>
-              <ion-select-option value="transportation">Transportasi</ion-select-option>
-              <ion-select-option value="utilities">Utilitas</ion-select-option>
+              <ion-select-option value="Makanan">Makanan</ion-select-option>
+              <ion-select-option value="Transportasi"
+                >Transportasi</ion-select-option
+              >
+              <ion-select-option value="Utilitas">Utilitas</ion-select-option>
             </ion-select>
           </ion-item>
           <ion-item v-if="type === 'pengeluaran'">
             <ion-label position="floating">Catatan Pengeluaran</ion-label>
             <ion-input type="text" v-model="note"></ion-input>
           </ion-item>
-          <h1 class="ml-5 mt-6 mb-2" v-if="type === 'pengeluaran'">Tanggal Pengeluaran</h1>
+          <h1 class="ml-5 mt-6 mb-2" v-if="type === 'pengeluaran'">
+            Tanggal Pengeluaran
+          </h1>
           <ion-item v-if="type === 'pengeluaran'">
             <ion-datetime
               locale="id-ID"
@@ -73,12 +79,20 @@
           <ion-item v-if="type === 'pemasukan'">
             <ion-label>Kategori</ion-label>
             <ion-select v-model="category">
-              <ion-select-option value="penghasilan">Penghasilan</ion-select-option>
+              <ion-select-option value="penghasilan"
+                >Penghasilan</ion-select-option
+              >
               <ion-select-option value="tabungan">Tabungan</ion-select-option>
               <ion-select-option value="hadiah">Hadiah</ion-select-option>
             </ion-select>
           </ion-item>
-          <ion-button expand="full" class="mb-24 mt-4" shape="round" @click="submitForm">Submit</ion-button>
+          <ion-button
+            expand="full"
+            class="mb-24 mt-4"
+            shape="round"
+            @click="submitForm"
+            >Submit</ion-button
+          >
         </ion-content>
       </ion-modal>
     </ion-page>
@@ -124,7 +138,7 @@ const formatNumber = (value: string) => {
 const submitForm = () => {
   // Lakukan tindakan submit form
   console.log("Tipe:", type.value);
-  if (type.value === 'pengeluaran') {
+  if (type.value === "pengeluaran") {
     console.log("Jumlah Uang:", amount.value);
     console.log("Kategori:", category.value);
     console.log("Catatan Pengeluaran:", note.value);
@@ -142,21 +156,32 @@ const submitForm = () => {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": localStorage.getItem('authToken'),
+        Authorization: localStorage.getItem("authToken"),
       },
       body: JSON.stringify(requestBody),
     })
       .then((response) => response.json())
       .then((data) => {
         console.log("Expense added successfully:", data);
+        fetch("http://localhost:5000/api/v1/user/update-saldo", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: localStorage.getItem("authToken"),
+          },
+          body: JSON.stringify({
+            method: "decrement",
+            amount: amount.value,
+          }),
+        });
+        window.location.reload();
         // Perform any necessary actions after adding the expense
       })
       .catch((error) => {
         console.error("Error adding expense:", error);
         // Handle any errors that occur while adding the expense
       });
-
-  } else if (type.value === 'pemasukan') {
+  } else if (type.value === "pemasukan") {
     console.log("Jumlah Uang:", amount.value);
     console.log("Kategori Pemasukan:", category.value);
 
@@ -170,7 +195,7 @@ const submitForm = () => {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": localStorage.getItem('authToken'),
+        Authorization: localStorage.getItem("authToken"),
       },
       body: JSON.stringify(requestBody),
     })
@@ -178,6 +203,19 @@ const submitForm = () => {
       .then((data) => {
         console.log("Income added successfully:", data);
         setOpen(false);
+
+        fetch("http://localhost:5000/api/v1/user/update-saldo", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: localStorage.getItem("authToken"),
+          },
+          body: JSON.stringify({
+            method: "increment",
+            amount: amount.value,
+          }),
+        });
+        window.location.reload();
         return modalController.dismiss(null, "");
         // Perform any necessary actions after adding the income
       })

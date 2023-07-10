@@ -20,13 +20,13 @@
           >Jumlah saldo <ion-icon aria-hidden="true" :icon="helpCircle" />
         </span>
       </ion-label>
-      <ion-icon aria-hidden="true" :icon="notifications" slot="end" />
+      <!-- <ion-icon aria-hidden="true" :icon="notifications" slot="end" /> -->
     </ion-item>
   </div>
 </template>
 <script setup>
 import { IonItem, IonLabel, IonIcon } from "@ionic/vue";
-import { eye, notifications, helpCircle, eyeOffOutline } from "ionicons/icons";
+import { eye, helpCircle, eyeOffOutline } from "ionicons/icons";
 import { ref, onMounted } from "vue";
 import axios from 'axios';
 
