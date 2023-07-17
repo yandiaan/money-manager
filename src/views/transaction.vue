@@ -19,7 +19,8 @@
       </div>
     </ion-header>
     <ion-content :fullscreen="true">
-      <div class="w-100 h-auto bg-gray-200">
+      <ion-loading :is-open="loading" message="Memuat..." spinner="crescent"></ion-loading>
+      <div class="w-100 h-auto bg-gray-200" v-if="!loading">
         <!-- Pemasukan Pengeluaran -->
         <div class="bg-white mb-12 py-4">
           <div class="flex justify-between items-center gap-8 px-4">
@@ -28,9 +29,9 @@
               <span>Pengeluaran</span>
             </div>
             <div class="flex flex-col flex-1 items-end">
-              <span class="text-blue-800">{{ formatCurrency(totalIncome) }}</span>
-              <span class="text-red-500 border-b-2 w-full text-right">{{ formatCurrency(totalExpense) }}</span>
-              <span>{{ formatCurrency(netIncome) }}</span>
+              <span class="text-blue-800">Rp. {{ formatCurrency(totalIncome) }}</span>
+              <span class="text-red-500 border-b-2 w-full text-right">Rp. {{ formatCurrency(totalExpense) }}</span>
+              <span>Rp. {{ formatCurrency(netIncome) }}</span>
             </div>
           </div>
         </div>
@@ -63,7 +64,7 @@
                     : 'text-red-500',
                 ]"
               >
-                {{ formatCurrency(transaction.amount) }}
+                Rp. {{ formatCurrency(transaction.amount) }}
               </h2>
             </div>
             <div class="flex justify-between items-center gap-3 p-3">
@@ -86,7 +87,7 @@
                     : 'text-red-500',
                 ]"
               >
-                {{ formatCurrency(transaction.amount) }}
+                Rp. {{ formatCurrency(transaction.amount) }}
               </h2>
             </div>
           </div>
@@ -99,10 +100,13 @@
 <script setup>
 import { ref, onMounted, computed } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { IonPage, IonHeader, IonToolbar, IonContent, IonSegment, IonSegmentButton } from "@ionic/vue";
+import { IonPage, IonHeader, IonToolbar, IonContent, IonSegment, IonSegmentButton, IonLoading } from "@ionic/vue";
 import { caretDownOutline, searchOutline } from "ionicons/icons";
 import axios from "axios";
 import moment from "moment";
+import { Storage } from "@ionic/storage";
+
+const storage = new Storage();
 
 const apiUrl = "https://money-manager-backend-api.cyclic.app/api/v1";
 
@@ -112,6 +116,7 @@ const totalExpense = ref(0);
 const netIncome = ref(0);
 const transactions = ref([]);
 const saldo = ref(0);
+const loading = ref(true);
 
 const selectedMonth = ref("now");
 
@@ -156,7 +161,8 @@ const currentYear = moment().format("YYYY");
 
 const fetchSaldo = async () => {
   try {
-    const token = localStorage.getItem("authToken");
+    await storage.create();
+    const token = await storage.get("authToken");
     const response = await axios.get(`${apiUrl}/user`, {
       headers: {
         Authorization: `${token}`,
@@ -164,15 +170,17 @@ const fetchSaldo = async () => {
     });
     const saldoData = response.data.saldo;
     saldo.value = saldoData;
+    loading.value = false;
   } catch (error) {
     console.log(error.message);
     throw new Error("Failed to fetch saldo");
   }
-}
+};
 
 const fetchTransactions = async () => {
   try {
-    const token = localStorage.getItem("authToken");
+    await storage.create();
+    const token = await storage.get("authToken");
 
     // Ambil data bulan ini
     const currentMonthResponse = await axios.get(
@@ -201,13 +209,14 @@ const fetchTransactions = async () => {
     totalExpense.value = currentMonthExpenses.reduce((total, expense) => total + expense.amount, 0);
     netIncome.value = totalIncome.value - totalExpense.value;
     transactions.value = [...currentMonthExpenses, ...currentMonthIncomes, ...lastMonthExpenses, ...lastMonthIncomes];
+    loading.value = false;
   } catch (error) {
     if (error.response.status === 401) {
       window.location.href = "/login";
     }
+    loading.value = false;
   }
 };
-
 
 // Fungsi untuk mengubah angka menjadi format rupiah
 function formatCurrency(angka) {

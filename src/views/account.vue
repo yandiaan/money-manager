@@ -48,11 +48,11 @@
 
 <script setup>
 import { ref, onMounted } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import {
   IonPage,
   IonHeader,
   IonToolbar,
-  IonTitle,
   IonContent,
   IonItem,
   IonLabel,
@@ -61,17 +61,19 @@ import {
   IonModal,
 } from '@ionic/vue';
 import {
-  chevronDownOutline,
-  add,
-  walletOutline,
   caretForwardOutline,
 } from 'ionicons/icons';
 import axios from 'axios';
+import { Storage } from '@ionic/storage';
 
 const showModal = ref(false);
 const modalTitle = ref('');
 const modalContent = ref('');
 const user = ref({});
+
+const storage = new Storage();
+const router = useRouter();
+const route = useRoute();
 
 const openModal = (title) => {
   if (title === 'Tentang') {
@@ -81,14 +83,16 @@ const openModal = (title) => {
   showModal.value = true;
 };
 
-const logout = () => {
-  localStorage.removeItem('authToken');
-  window.location.href = '/login';
+const logout = async () => {
+  await storage.create();
+  await storage.remove('authToken');
+  await router.push('/login');
 };
 
 const fetchUserInfo = async () => {
   try {
-    const authToken = localStorage.getItem('authToken');
+    await storage.create();
+    const authToken = await storage.get('authToken');
     const response = await axios.get('https://money-manager-backend-api.cyclic.app/api/v1/user', {
       headers: {
         Authorization: authToken,
@@ -98,8 +102,7 @@ const fetchUserInfo = async () => {
   } catch (error) {
     console.error(error);
     if (error.response && error.response.status === 401) {
-      // Redirect ke halaman login jika status response adalah 401 (Unauthorized)
-      window.location.href = '/login';
+      await router.push('/login');
     }
   }
 };

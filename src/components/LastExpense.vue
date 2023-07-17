@@ -30,16 +30,20 @@ import {
 } from "@ionic/vue";
 import { removeCircle } from "ionicons/icons";
 import moment from "moment";
+import { Storage } from "@ionic/storage";
 
 const transactions = ref([]);
 
+const storage = new Storage();
+
 const fetchData = async () => {
   // Fetch expense transactions
+  await storage.create();
   const expenseResponse = await fetch("https://money-manager-backend-api.cyclic.app/api/v1/expense/last-week", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: localStorage.getItem("authToken"),
+      Authorization: await storage.get("authToken"),
     },
   });
   const expenseData = await expenseResponse.json();
@@ -49,7 +53,7 @@ const fetchData = async () => {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: localStorage.getItem("authToken"),
+      Authorization: await storage.get("authToken"),
     },
   });
   const incomeData = await incomeResponse.json();

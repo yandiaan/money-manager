@@ -84,6 +84,7 @@
             Submit
           </ion-button>
         </ion-content>
+        <ion-loading :is-open="loading" message="Menambahkan data..." spinner="crescent"></ion-loading>
       </ion-modal>
     </ion-page>
   </ion-app>
@@ -108,10 +109,15 @@ import {
   IonDatetime,
   modalController,
   alertController,
+  IonLoading,
 } from "@ionic/vue";
 import { add } from "ionicons/icons";
 import Menu from "@/components/Menu.vue";
+import { Storage } from "@ionic/storage";
+import { useRouter } from 'vue-router';
+import axios from 'axios';
 
+const router = useRouter();
 let isOpen = ref(false);
 let name = ref("Modal");
 const type = ref("");
@@ -120,14 +126,17 @@ const category = ref("");
 const note = ref("");
 const date = ref("");
 const isAmountFocused = ref(false);
+const storage = new Storage();
+const loading = ref(false);
 
 const formatNumber = (value) => {
   const number = parseInt(value);
   return number.toLocaleString(); // Format dengan tanda titik ribuan
 };
 
-const submitForm = () => {
+const submitForm = async () => {
   if (type.value === "pengeluaran") {
+    loading.value = true;
     const requestBody = {
       amount: amount.value,
       category: category.value,
@@ -135,83 +144,128 @@ const submitForm = () => {
       date: date.value,
     };
 
-    fetch("http://localhost:5000/api/v1/add-expense", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: localStorage.getItem("authToken"),
-      },
-      body: JSON.stringify(requestBody),
-    })
-      .then((response) => response.json())
-      .then((data) => {
+    try {
+      await storage.create();
+      const response = await axios.post(
+        "https://money-manager-backend-api.cyclic.app/api/v1/add-expense",
+        requestBody,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: await storage.get("authToken"),
+          },
+        }
+      );
+
+      if (response.status === 200) {
+        const data = response.data;
         console.log("Expense added successfully:", data);
         if (data.budgetExceeded) {
           console.log("Expense");
-          showAlert("Rencana Terpenuhi", "Pengeluaran anda telah memenuhi anggaran.");
-        } else {
-          fetch("http://localhost:5000/api/v1/user/update-saldo", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: localStorage.getItem("authToken"),
-            },
-            body: JSON.stringify({
+          await axios.post(
+            "https://money-manager-backend-api.cyclic.app/api/v1/user/update-saldo",
+            {
               method: "decrement",
               amount: amount.value,
-            }),
-          });
+            },
+            {
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: await storage.get("authToken"),
+              },
+            }
+          );
+          showAlert("Rencana Terpenuhi", "Pengeluaran anda telah memenuhi anggaran.");
           setTimeout(() => {
-            window.location.reload();
-          }, 3000);
+            router.go(0);
+          }, 1000);
+        } else {
+          await axios.post(
+            "https://money-manager-backend-api.cyclic.app/api/v1/user/update-saldo",
+            {
+              method: "decrement",
+              amount: amount.value,
+            },
+            {
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: await storage.get("authToken"),
+              },
+            }
+          );
+          showAlert("Pengeluaran Ditambahkan", "Data pengeluaran telah ditambahkan.");
+          setTimeout(() => {
+            router.go(0);
+          }, 1000);
           // Perform any necessary actions after adding the expense
         }
-      })
-      .catch((error) => {
-        console.error("Error adding expense:", error);
-        // Handle any errors that occur while adding the expense
-      });
+      } else {
+        console.error("Failed to add expense");
+        // Handle the failure to add expense
+      }
+    } catch (error) {
+      console.error("Error adding expense:", error);
+      // Handle any errors that occur while adding the expense
+    }
+    loading.value = false;
   } else if (type.value === "pemasukan") {
+    loading.value = true;
     // Send request to the API endpoint for adding an income
     const requestBody = {
       amount: amount.value,
       category: category.value,
     };
 
-    fetch("http://localhost:5000/api/v1/add-income", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: localStorage.getItem("authToken"),
-      },
-      body: JSON.stringify(requestBody),
-    })
-      .then((response) => response.json())
-      .then((data) => {
+    try {
+      await storage.create();
+      const response = await axios.post(
+        "https://money-manager-backend-api.cyclic.app/api/v1/add-income",
+        requestBody,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: await storage.get("authToken"),
+          },
+        }
+      );
+
+      if (response.status === 200) {
+        const data = response.data;
         console.log("Income added successfully:", data);
         setOpen(false);
 
-        fetch("http://localhost:5000/api/v1/user/update-saldo", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: localStorage.getItem("authToken"),
-          },
-          body: JSON.stringify({
+        await axios.post(
+          "https://money-manager-backend-api.cyclic.app/api/v1/user/update-saldo",
+          {
             method: "increment",
             amount: amount.value,
-          }),
-        });
-        window.location.reload();
-        return modalController.dismiss(null, "");
+          },
+          {
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: await storage.get("authToken"),
+            },
+          }
+        );
+        showAlert("Pemasukan Ditambahkan", "Data pemasukan telah ditambahkan.");
+        setTimeout(() => {
+          router.go(0);
+        }, 1000);
         // Perform any necessary actions after adding the income
-      })
-      .catch((error) => {
-        console.error("Error adding income:", error);
-        // Handle any errors that occur while adding the income
-      });
+      } else {
+        console.error("Failed to add income");
+        // Handle the failure to add income
+      }
+    } catch (error) {
+      console.error("Error adding income:", error);
+      // Handle any errors that occur while adding the income
+    }
+    loading.value = false;
   }
 };
+
+
+
 
 const showAlert = async (header, message) => {
   const alert = await alertController.create({
@@ -221,10 +275,6 @@ const showAlert = async (header, message) => {
   });
 
   await alert.present();
-
-  setTimeout(() => {
-    window.location.reload();
-  }, 3000);
 };
 
 

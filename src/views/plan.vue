@@ -15,6 +15,12 @@
       </div>
     </ion-header>
     <ion-content :fullscreen="true">
+      <ion-spinner
+        class="ion-margin"
+        color="primary"
+        v-if="loading"
+      ></ion-spinner>
+
       <div class="w-100 h-auto bg-gray-200">
         <!-- Pemasukan Pengeluaran -->
         <div class="bg-white p-4 mb-12" v-for="plan in plans" :key="plan._id">
@@ -135,16 +141,21 @@ import { chevronDownOutline, add } from "ionicons/icons";
 import ProgressBar from "@/components/ProgressBar.vue";
 import axios from "axios";
 import { ref, onMounted } from "vue";
+import { Storage } from "@ionic/storage";
 
+const storage = new Storage();
 const showModal = ref(false);
 const newPlan = ref({
   category: "",
   amount: 0,
 });
 
+const loading = ref(true);
+
 const fetchData = async () => {
   try {
-    const authToken = localStorage.getItem("authToken");
+    await storage.create();
+    const authToken = await storage.get("authToken");
     const response = await axios.get("https://money-manager-backend-api.cyclic.app/api/v1/get-plans", {
       headers: {
         Authorization: authToken,
@@ -163,7 +174,8 @@ const fetchData = async () => {
 
 const addPlan = async () => {
   try {
-    const authToken = localStorage.getItem("authToken");
+    await storage.create();
+    const authToken = await storage.get("authToken");
     
     // Cek apakah kategori telah ada
     const existingPlan = plans.value.find(plan => plan.category === newPlan.value.category);
@@ -234,7 +246,8 @@ const plans = ref([]);
 
 const deletePlan = async (planId) => {
   try {
-    const authToken = localStorage.getItem("authToken");
+    await storage.create();
+    const authToken = await storage.get("authToken");
     await axios.delete(`https://money-manager-backend-api.cyclic.app/api/v1/delete-plan/${planId}`, {
       headers: {
         Authorization: authToken,
@@ -277,17 +290,27 @@ function formatRibuan(angka) {
   return angka.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
 }
 
-let cancel = () => {
-  showModal(false);
-  return modalController.dismiss(null, "cancel");
-};
+const cancel = async () => {
+    showModal.value = false;
+    await modalController.dismiss(null, "cancel");
+  };
 
-let confirm = () => {
-  showModal(false);
-  return modalController.dismiss(name.value, "confirm");
-};
+  const confirm = async () => {
+    showModal.value = false;
+    await modalController.dismiss(newPlan.value, "confirm");
+  };
 
-onMounted(async () => {
-  plans.value = await fetchData();
+  onMounted(async () => {
+  try {
+    plans.value = await fetchData();
+    loading.value = false;
+  } catch (error) {
+    console.error(error);
+    if (error.response && error.response.status === 401) {
+      // Redirect ke halaman login jika status response adalah 401 (Unauthorized)
+      window.location.href = "/login";
+    }
+    loading.value = false;
+  }
 });
 </script>

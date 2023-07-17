@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from "@ionic/vue-router";
 import { RouteRecordRaw } from "vue-router";
+import { Storage } from "@ionic/storage";
 
 const routes: Array<RouteRecordRaw> = [
   // DEFAULT LAYOUT
@@ -59,21 +60,24 @@ const routes: Array<RouteRecordRaw> = [
   },
 ];
 
+const storage = new Storage();
+
 const router = createRouter({
   history: createWebHistory(process.env.BASE_URL),
   routes,
 });
 
-router.beforeEach((to, from, next) => {
+router.beforeEach(async (to, from, next) => {
   const requiresAuth = to.matched.some((record) => record.meta.requiresAuth);
 
   if (requiresAuth) {
     // Cek status autentikasi pengguna
-    const authToken = localStorage.getItem('authToken');
+    await storage.create();
+    const authToken = await storage.get("authToken");
 
     if (!authToken) {
       // Token otentikasi tidak ada, alihkan ke halaman login
-      next('/login');
+      next("/login");
     } else {
       // Token otentikasi ada, lanjutkan
       next();

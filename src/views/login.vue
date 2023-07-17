@@ -47,7 +47,6 @@
       </div>
     </ion-content>
 
-    <!-- Tambahkan komponen toast di sini -->
     <ion-toast
       :is-open="showToast"
       :message="toastMessage"
@@ -56,17 +55,20 @@
       duration="3000"
       @ionToastDidDismiss="showToast = false"
     ></ion-toast>
+
+    <ion-loading :is-open="showLoading" message="Logging in..." />
   </section>
 </template>
 
 <script setup lang="ts">
-import {ref} from 'vue';
-import { IonGrid, IonContent, IonRow, IonCol, IonCard, IonCardHeader, IonCardTitle, IonCardContent, IonItem, IonInput, IonButton, IonIcon, IonImg, IonToast } from '@ionic/vue';
+import { ref } from 'vue';
+import { IonGrid, IonContent, IonRow, IonCol, IonCard, IonCardHeader, IonCardTitle, IonCardContent, IonItem, IonInput, IonButton, IonIcon, IonImg, IonToast, IonLoading } from '@ionic/vue';
 import { mailOutline, keyOutline } from 'ionicons/icons';
 import { useRouter } from 'vue-router';
 import { useForm, useField } from 'vee-validate';
 import * as yup from 'yup';
 import axios from 'axios';
+import { Storage } from '@ionic/storage';
 
 type Model = {
   email: string;
@@ -74,16 +76,17 @@ type Model = {
 }
 
 const router = useRouter();
-
+const storage = new Storage();
 const showToast = ref(false);
 const toastMessage = ref('');
+const showLoading = ref(false);
 
 const schema = yup.object({
   email: yup.string().required().email(),
   password: yup.string().required().min(6),
 });
 
-const { handleSubmit } = useForm<Model>({
+const { handleSubmit, onInvalidSubmit } = useForm<Model>({
   validationSchema: schema,
   validateOnMount: false,
   initialValues: {
@@ -95,35 +98,31 @@ const { handleSubmit } = useForm<Model>({
 const { errorMessage: errorMessageEmail, value: email } = useField('email', schema);
 const { errorMessage: errorMessagePassword, value: password } = useField('password', schema);
 
-function onInvalidSubmit({ values, errors, results }: { values: any, errors: any, results: any }) {
-  console.log(values); // current form values
-  console.log(errors); // a map of field names and their first error message
-  console.log(results); // a detailed map of field names and their validation results
-}
-
 const onSubmit = handleSubmit(async (values) => {
   try {
+    showLoading.value = true;
+
     const response = await axios.post('https://money-manager-backend-api.cyclic.app/api/v1/auth/login', values);
 
     if (response.status === 200) {
       const data = response.data;
-      // Simpan token otentikasi ke local storage
-      localStorage.setItem('authToken', data.token);
-      // Alihkan ke halaman home setelah login berhasil
+      await storage.create();
+      await storage.set('authToken', data.token);
       router.push('/home');
       showToast.value = true;
       toastMessage.value = 'Login berhasil.';
     } else {
       console.error('Login failed');
-      // Handle error response
       showToast.value = true;
       toastMessage.value = 'Login gagal. Periksa kredensial Anda.';
     }
   } catch (error) {
     console.error('Login failed', error);
-    // Handle error
     showToast.value = true;
     toastMessage.value = 'Terjadi kesalahan saat login.';
+  } finally {
+    showLoading.value = false;
   }
-}, onInvalidSubmit);
+});
+
 </script>

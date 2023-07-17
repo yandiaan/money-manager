@@ -52,6 +52,7 @@ import { IonLabel, IonIcon, IonSegment, IonSegmentButton } from "@ionic/vue";
 import { removeCircle } from "ionicons/icons";
 import moment from "moment";
 import axios from "axios";
+import { Storage } from "@ionic/storage";
 
 import { Bar } from "vue-chartjs";
 import {
@@ -79,6 +80,7 @@ const chartOptions = ref({
 
 const selectedSegment = ref("minggu");
 const selectedSegmentLabel = ref("Minggu");
+const storage = new Storage();
 
 const chartData = ref({
   labels: [`Minggu lalu`,`Minggu Ini`],
@@ -97,7 +99,8 @@ const topExpenses = ref([]);
 const loaded = ref(false);
 
 const fetchData = async () => {
-  const token = localStorage.getItem("authToken");
+  await storage.create();
+  const token = await storage.get("authToken");
 
   try {
     if (selectedSegment.value === "minggu") {

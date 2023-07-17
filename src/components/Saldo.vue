@@ -28,10 +28,12 @@
 import { IonItem, IonLabel, IonIcon } from "@ionic/vue";
 import { eye, helpCircle, eyeOffOutline } from "ionicons/icons";
 import { ref, onMounted } from "vue";
+import { Storage } from "@ionic/storage";
 import axios from 'axios';
 
 let saldo = ref(0);
 let saldoView = ref(false);
+const storage = new Storage();
 
 function formatRibuan(angka) {
   return angka.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
@@ -43,7 +45,8 @@ let handleSaldo = () => {
 
 onMounted(async () => {
   try {
-    const token = localStorage.getItem('authToken');
+    await storage.create();
+    const token = await storage.get('authToken');
     const response = await axios.get('https://money-manager-backend-api.cyclic.app/api/v1/user', {
       headers: {
         Authorization: `${token}`
