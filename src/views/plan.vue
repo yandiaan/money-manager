@@ -145,7 +145,7 @@ const newPlan = ref({
 const fetchData = async () => {
   try {
     const authToken = localStorage.getItem("authToken");
-    const response = await axios.get("https://amused-pink-caridea.cyclic.app/api/v1/get-plans", {
+    const response = await axios.get("https://money-manager-backend-api.cyclic.app/api/v1/get-plans", {
       headers: {
         Authorization: authToken,
       },
@@ -178,7 +178,7 @@ const addPlan = async () => {
     }
 
     const response = await axios.post(
-      "https://amused-pink-caridea.cyclic.app/api/v1/add-plan",
+      "https://money-manager-backend-api.cyclic.app/api/v1/add-plan",
       {
         category: newPlan.value.category,
         amount: newPlan.value.amount,
@@ -235,7 +235,7 @@ const plans = ref([]);
 const deletePlan = async (planId) => {
   try {
     const authToken = localStorage.getItem("authToken");
-    await axios.delete(`https://amused-pink-caridea.cyclic.app/api/v1/delete-plan/${planId}`, {
+    await axios.delete(`https://money-manager-backend-api.cyclic.app/api/v1/delete-plan/${planId}`, {
       headers: {
         Authorization: authToken,
       },

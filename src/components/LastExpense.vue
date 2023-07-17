@@ -35,7 +35,7 @@ const transactions = ref([]);
 
 const fetchData = async () => {
   // Fetch expense transactions
-  const expenseResponse = await fetch("https://amused-pink-caridea.cyclic.app/api/v1/expense/last-week", {
+  const expenseResponse = await fetch("https://money-manager-backend-api.cyclic.app/api/v1/expense/last-week", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -45,7 +45,7 @@ const fetchData = async () => {
   const expenseData = await expenseResponse.json();
 
   // Fetch income transactions
-  const incomeResponse = await fetch("https://amused-pink-caridea.cyclic.app/api/v1/income/last-week", {
+  const incomeResponse = await fetch("https://money-manager-backend-api.cyclic.app/api/v1/income/last-week", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

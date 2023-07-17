@@ -109,7 +109,7 @@
   const onSubmit = handleSubmit(async (values) => {
   try {
     // Kirim permintaan ke API register
-    const response = await axios.post('https://amused-pink-caridea.cyclic.app/api/v1/auth/register', values);
+    const response = await axios.post('https://money-manager-backend-api.cyclic.app/api/v1/auth/register', values);
     console.log(response.data); // Respon dari backend setelah berhasil mendaftar
 
     // Redirect ke halaman home setelah berhasil mendaftar

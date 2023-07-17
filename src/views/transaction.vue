@@ -104,7 +104,7 @@ import { caretDownOutline, searchOutline } from "ionicons/icons";
 import axios from "axios";
 import moment from "moment";
 
-const apiUrl = "https://amused-pink-caridea.cyclic.app/api/v1";
+const apiUrl = "https://money-manager-backend-api.cyclic.app/api/v1";
 
 // Data untuk ditampilkan pada tampilan
 const totalIncome = ref(0);

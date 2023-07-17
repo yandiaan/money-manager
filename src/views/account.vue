@@ -89,7 +89,7 @@ const logout = () => {
 const fetchUserInfo = async () => {
   try {
     const authToken = localStorage.getItem('authToken');
-    const response = await axios.get('https://amused-pink-caridea.cyclic.app/api/v1/user', {
+    const response = await axios.get('https://money-manager-backend-api.cyclic.app/api/v1/user', {
       headers: {
         Authorization: authToken,
       },

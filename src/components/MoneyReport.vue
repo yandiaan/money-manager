@@ -102,7 +102,7 @@ const fetchData = async () => {
   try {
     if (selectedSegment.value === "minggu") {
       const responseCurrentWeek = await axios.post(
-        "https://amused-pink-caridea.cyclic.app/api/v1/expense/last-week",
+        "https://money-manager-backend-api.cyclic.app/api/v1/expense/last-week",
         null,
         {
           headers: {
@@ -111,7 +111,7 @@ const fetchData = async () => {
         }
       );
       const responseLastWeek = await axios.post(
-        "https://amused-pink-caridea.cyclic.app/api/v1/expense/last-week",
+        "https://money-manager-backend-api.cyclic.app/api/v1/expense/last-week",
         {
           startDate: "2023-07-01",
           endDate: "2023-07-05",
@@ -139,7 +139,7 @@ const fetchData = async () => {
 
       // Mengambil data bulan ini
       const responseCurrentMonth = await axios.get(
-        "https://amused-pink-caridea.cyclic.app/api/v1/monthly-transaction",
+        "https://money-manager-backend-api.cyclic.app/api/v1/monthly-transaction",
         {
           params: {
             month: currentMonth,
@@ -156,7 +156,7 @@ const fetchData = async () => {
 
       // Mengambil data bulan sebelumnya
       const responseLastMonth = await axios.get(
-        "https://amused-pink-caridea.cyclic.app/api/v1/monthly-transaction",
+        "https://money-manager-backend-api.cyclic.app/api/v1/monthly-transaction",
         {
           params: {
             month: lastMonth,
