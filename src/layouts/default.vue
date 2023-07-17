@@ -23,9 +23,7 @@
           <ion-item>
             <ion-label>Tipe</ion-label>
             <ion-select v-model="type">
-              <ion-select-option value="pengeluaran"
-                >Pengeluaran</ion-select-option
-              >
+              <ion-select-option value="pengeluaran">Pengeluaran</ion-select-option>
               <ion-select-option value="pemasukan">Pemasukan</ion-select-option>
             </ion-select>
           </ion-item>
@@ -43,9 +41,7 @@
             <ion-label>Kategori</ion-label>
             <ion-select v-model="category">
               <ion-select-option value="Makanan">Makanan</ion-select-option>
-              <ion-select-option value="Transportasi"
-                >Transportasi</ion-select-option
-              >
+              <ion-select-option value="Transportasi">Transportasi</ion-select-option>
               <ion-select-option value="Utilitas">Utilitas</ion-select-option>
             </ion-select>
           </ion-item>
@@ -79,27 +75,21 @@
           <ion-item v-if="type === 'pemasukan'">
             <ion-label>Kategori</ion-label>
             <ion-select v-model="category">
-              <ion-select-option value="penghasilan"
-                >Penghasilan</ion-select-option
-              >
+              <ion-select-option value="penghasilan">Penghasilan</ion-select-option>
               <ion-select-option value="tabungan">Tabungan</ion-select-option>
               <ion-select-option value="hadiah">Hadiah</ion-select-option>
             </ion-select>
           </ion-item>
-          <ion-button
-            expand="full"
-            class="mb-24 mt-4"
-            shape="round"
-            @click="submitForm"
-            >Submit</ion-button
-          >
+          <ion-button expand="full" class="mb-24 mt-4" shape="round" @click="submitForm">
+            Submit
+          </ion-button>
         </ion-content>
       </ion-modal>
     </ion-page>
   </ion-app>
 </template>
 
-<script lang="ts" setup name="defaultLayout">
+<script setup>
 import { ref, onMounted } from "vue";
 import {
   IonPage,
@@ -117,6 +107,7 @@ import {
   IonSelectOption,
   IonDatetime,
   modalController,
+  alertController,
 } from "@ionic/vue";
 import { add } from "ionicons/icons";
 import Menu from "@/components/Menu.vue";
@@ -130,21 +121,13 @@ const note = ref("");
 const date = ref("");
 const isAmountFocused = ref(false);
 
-const formatNumber = (value: string) => {
+const formatNumber = (value) => {
   const number = parseInt(value);
   return number.toLocaleString(); // Format dengan tanda titik ribuan
 };
 
 const submitForm = () => {
-  // Lakukan tindakan submit form
-  console.log("Tipe:", type.value);
   if (type.value === "pengeluaran") {
-    console.log("Jumlah Uang:", amount.value);
-    console.log("Kategori:", category.value);
-    console.log("Catatan Pengeluaran:", note.value);
-    console.log("Tanggal:", date.value);
-
-    // Send request to the API endpoint for adding an expense
     const requestBody = {
       amount: amount.value,
       category: category.value,
@@ -163,28 +146,32 @@ const submitForm = () => {
       .then((response) => response.json())
       .then((data) => {
         console.log("Expense added successfully:", data);
-        fetch("http://localhost:5000/api/v1/user/update-saldo", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: localStorage.getItem("authToken"),
-          },
-          body: JSON.stringify({
-            method: "decrement",
-            amount: amount.value,
-          }),
-        });
-        window.location.reload();
-        // Perform any necessary actions after adding the expense
+        if (data.budgetExceeded) {
+          console.log("Expense");
+          showAlert("Rencana Terpenuhi", "Pengeluaran anda telah memenuhi anggaran.");
+        } else {
+          fetch("http://localhost:5000/api/v1/user/update-saldo", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: localStorage.getItem("authToken"),
+            },
+            body: JSON.stringify({
+              method: "decrement",
+              amount: amount.value,
+            }),
+          });
+          setTimeout(() => {
+            window.location.reload();
+          }, 3000);
+          // Perform any necessary actions after adding the expense
+        }
       })
       .catch((error) => {
         console.error("Error adding expense:", error);
         // Handle any errors that occur while adding the expense
       });
   } else if (type.value === "pemasukan") {
-    console.log("Jumlah Uang:", amount.value);
-    console.log("Kategori Pemasukan:", category.value);
-
     // Send request to the API endpoint for adding an income
     const requestBody = {
       amount: amount.value,
@@ -226,11 +213,23 @@ const submitForm = () => {
   }
 };
 
-const thousandSeparatorDirective = (el: {
-  addEventListener: (arg0: string, arg1: (event: any) => void) => void;
-  removeEventListener: (arg0: string, arg1: (event: any) => void) => void;
-}) => {
-  const inputEventHandler = (event: { target: any }) => {
+const showAlert = async (header, message) => {
+  const alert = await alertController.create({
+    header,
+    message,
+    buttons: ["OK"],
+  });
+
+  await alert.present();
+
+  setTimeout(() => {
+    window.location.reload();
+  }, 3000);
+};
+
+
+const thousandSeparatorDirective = (el) => {
+  const inputEventHandler = (event) => {
     const input = event.target;
     const rawValue = input.value.replace(/\./g, ""); // Hilangkan tanda titik ribuan yang ada
     const formattedValue = formatNumber(rawValue); // Format nilai dengan tanda titik ribuan
@@ -245,7 +244,7 @@ const thousandSeparatorDirective = (el: {
   });
 };
 
-let setOpen = (open: boolean) => {
+let setOpen = (open) => {
   isOpen.value = open;
 };
 

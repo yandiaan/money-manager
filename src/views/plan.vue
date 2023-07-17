@@ -8,13 +8,9 @@
       </ion-toolbar>
 
       <div class="bg-gray-200">
-        <div
-          class="flex justify-between items-center py-2 text-xs text-gray-500 font-bold"
-        >
+        <div class="flex justify-between items-center py-2 text-xs text-gray-500 font-bold">
           <h1 class="italic">Terdapat {{ plans.length }} Rencana Anggaran</h1>
-          <ion-button size="small" @click="showModal = true"
-            >Tambahkan</ion-button
-          >
+          <ion-button size="small" @click="showModal = true">Tambahkan</ion-button>
         </div>
       </div>
     </ion-header>
@@ -25,29 +21,54 @@
           <div class="flex justify-between border-b-2 pb-4">
             <h1 class="text-lg font-bold">{{ plan.category }}</h1>
             <div class="flex flex-col text-gray-500 text-right text-lg">
-              <h1 class="font-bold">{{ plan.amount }}</h1>
-              <span class="text-xs"
-                >Tersisa {{ plan.amount - plan.spent }}</span
-              >
+              <h1 class="font-bold">Rp. {{ formatRibuan(plan.amount) }}</h1>
+              <span v-if="plan.spent > plan.amount" class="text-xs font-bold text-red-500">
+                Melebihi Anggaran 
+              </span>
+              <span v-else-if="plan.spent === plan.amount" class="text-xs font-bold text-green-500">
+                Rencana Terpenuhi
+              </span>
+              <span v-else class="text-xs">
+                Tersisa Rp. {{ formatRibuan(plan.amount - plan.spent) }}
+              </span>
             </div>
           </div>
           <div class="flex justify-between py-4">
             <img
               :src="getCategoryIcon(plan.category)"
-              alt="{{plan.category}}"
+              :alt="plan.category"
               class="w-[48px] h-[48px]"
             />
-            <div class="flex flex-col gap-2">
+            <div class="flex flex-col gap-2 w-[240px]">
               <div class="flex justify-between gap-4">
                 <span class="text-lg self-start">{{ plan.category }}</span>
                 <div class="flex flex-col text-right text-lg">
-                  <h1 class="font-bold">{{ plan.amount }}</h1>
-                  <span class="text-xs"
-                    >Tersisa {{ plan.amount - plan.spent }}</span
-                  >
+                  <h1 class="font-bold">Rp. {{ formatRibuan(plan.amount) }}</h1>
+                  <span v-if="plan.spent > plan.amount" class="text-xs opacity-50 font-bold text-red-500">
+                Melebihi <br /> Rp. {{ formatRibuan(plan.spent - plan.amount) }}
+              </span>
+              <span v-else-if="plan.spent === plan.amount" class="text-xs opacity-50 font-bold text-green-500">
+                Rencana Terpenuhi
+              </span>
+              <span v-else class="text-xs opacity-50">
+                Tersisa Rp. {{ formatRibuan(plan.amount - plan.spent) }}
+              </span>
                 </div>
               </div>
-              <ProgressBar :value="plan.spent" :maxValue="plan.amount" />
+              <div class="flex flex-col gap-4 justify-end items-end">
+              <ProgressBar
+                :value="plan.spent"
+                :maxValue="plan.amount"
+                :bgColor="getProgressBarColor(plan)"
+              />
+              <ion-button
+                v-if="plan.spent >= plan.amount"
+                color="danger"
+                @click="confirmDeletePlan(plan._id)"
+              >
+                Hapus Rencana
+              </ion-button>
+            </div>
             </div>
           </div>
         </div>
@@ -70,25 +91,19 @@
               <ion-label>Kategori</ion-label>
               <ion-select v-model="newPlan.category">
                 <ion-select-option value="Makanan">Makanan</ion-select-option>
-                <ion-select-option value="Transportasi"
-                  >Transportasi</ion-select-option
-                >
+                <ion-select-option value="Transportasi">Transportasi</ion-select-option>
                 <ion-select-option value="Utilitas">Utilitas</ion-select-option>
               </ion-select>
             </ion-item>
             <ion-item>
               <ion-label position="floating">Jumlah</ion-label>
-              <ion-input
-                v-model="newPlan.amount"
-                type="number"
-                required
-              ></ion-input>
+              <ion-input v-model="newPlan.amount" type="number" required></ion-input>
             </ion-item>
           </ion-list>
           <div class="ion-padding">
-            <ion-button expand="full" @click="addPlan" shape="round"
-              >Tambahkan Rencana</ion-button
-            >
+            <ion-button expand="full" @click="addPlan" shape="round">
+              Tambahkan Rencana
+            </ion-button>
           </div>
         </ion-content>
       </ion-modal>
@@ -113,7 +128,8 @@ import {
   IonSelect,
   IonSelectOption,
   IonInput,
-  modalController
+  modalController,
+  alertController,
 } from "@ionic/vue";
 import { chevronDownOutline, add } from "ionicons/icons";
 import ProgressBar from "@/components/ProgressBar.vue";
@@ -129,7 +145,7 @@ const newPlan = ref({
 const fetchData = async () => {
   try {
     const authToken = localStorage.getItem("authToken");
-    const response = await axios.get("http://localhost:5000/api/v1/get-plans", {
+    const response = await axios.get("https://amused-pink-caridea.cyclic.app/api/v1/get-plans", {
       headers: {
         Authorization: authToken,
       },
@@ -146,11 +162,23 @@ const fetchData = async () => {
 };
 
 const addPlan = async () => {
-  console.log(newPlan.value);
   try {
     const authToken = localStorage.getItem("authToken");
+    
+    // Cek apakah kategori telah ada
+    const existingPlan = plans.value.find(plan => plan.category === newPlan.value.category);
+    if (existingPlan) {
+      const alert = await alertController.create({
+        header: "Kategori Sudah Ada",
+        message: "Kategori yang Anda masukkan sudah ada. Silakan pilih kategori lain.",
+        buttons: ["OK"]
+      });
+      await alert.present();
+      return;
+    }
+
     const response = await axios.post(
-      "http://localhost:5000/api/v1/add-plan",
+      "https://amused-pink-caridea.cyclic.app/api/v1/add-plan",
       {
         category: newPlan.value.category,
         amount: newPlan.value.amount,
@@ -192,7 +220,62 @@ const getCategoryIcon = (category) => {
   return categoryIconMap[category];
 };
 
+const getProgressBarColor = (plan) => {
+  if (plan.spent > plan.amount) {
+    return "bg-red-500"; // Jika spent melebihi atau sama dengan amount, warna merah
+  } else if (plan.spent === plan.amount) {
+    return "bg-green-500"; // Jika spent kurang dari amount, warna hijau
+  } else {
+    return "bg-blue-500";
+  }
+};
+
 const plans = ref([]);
+
+const deletePlan = async (planId) => {
+  try {
+    const authToken = localStorage.getItem("authToken");
+    await axios.delete(`https://amused-pink-caridea.cyclic.app/api/v1/delete-plan/${planId}`, {
+      headers: {
+        Authorization: authToken,
+      },
+    });
+
+    // Memperbarui data rencana yang ditampilkan di halaman
+    plans.value = await fetchData();
+  } catch (error) {
+    console.error(error);
+    if (error.response && error.response.status === 401) {
+      // Redirect ke halaman login jika status response adalah 401 (Unauthorized)
+      window.location.href = "/login";
+    }
+  }
+};
+
+const confirmDeletePlan = async (planId) => {
+  const alert = await alertController.create({
+    header: "Konfirmasi",
+    message: "Apakah Anda yakin ingin menghapus rencana ini?",
+    buttons: [
+      {
+        text: "Batal",
+        role: "cancel",
+      },
+      {
+        text: "Hapus",
+        handler: () => {
+          deletePlan(planId);
+        },
+      },
+    ],
+  });
+
+  await alert.present();
+};
+
+function formatRibuan(angka) {
+  return angka.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+}
 
 let cancel = () => {
   showModal(false);

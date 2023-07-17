@@ -4,19 +4,16 @@
       <ion-toolbar class="px-4">
         <div class="flex justify-center items-center flex-col">
           <small>Saldo</small>
-          <h1 class="font-black">Rp. 360,000</h1>
+          <h1 class="font-black">Rp. {{ formatCurrency(saldo) }}</h1>
         </div>
       </ion-toolbar>
       <div class="bg-gray-200">
-        <ion-segment color="tertiary" value="now">
+        <ion-segment color="tertiary" v-model="selectedMonth">
           <ion-segment-button value="past">
             <ion-label>Bulan lalu</ion-label>
           </ion-segment-button>
           <ion-segment-button value="now">
             <ion-label>Bulan ini</ion-label>
-          </ion-segment-button>
-          <ion-segment-button value="future">
-            <ion-label>Masa Depan</ion-label>
           </ion-segment-button>
         </ion-segment>
       </div>
@@ -31,12 +28,8 @@
               <span>Pengeluaran</span>
             </div>
             <div class="flex flex-col flex-1 items-end">
-              <span class="text-blue-800">{{
-                formatCurrency(totalIncome)
-              }}</span>
-              <span class="text-red-500 border-b-2 w-full text-right">{{
-                formatCurrency(totalExpense)
-              }}</span>
+              <span class="text-blue-800">{{ formatCurrency(totalIncome) }}</span>
+              <span class="text-red-500 border-b-2 w-full text-right">{{ formatCurrency(totalExpense) }}</span>
               <span>{{ formatCurrency(netIncome) }}</span>
             </div>
           </div>
@@ -46,21 +39,21 @@
         <div class="flex flex-col gap-12">
           <div
             class="bg-white"
-            v-for="transaction in transactions"
+            v-for="transaction in filteredTransactions"
             :key="transaction._id"
           >
             <div
               class="flex justify-between items-center gap-3 py-3 border-b-2 mx-4"
             >
               <h1 class="text-3xl font-bold">
-                {{ getTransactionDay(transaction.date) }}
+                {{ getTransactionDay(transaction.date || transaction.createdAt) }}
               </h1>
               <div class="flex flex-col flex-1">
                 <span class="text-sm font-semibold">{{
-                  getTransactionRelativeTime(transaction.date)
+                  getTransactionRelativeTime(transaction.date || transaction.createdAt)
                 }}</span>
                 <small class="text-xs">{{
-                  getTransactionDate(transaction.date)
+                  getTransactionDate(transaction.date || transaction.createdAt)
                 }}</small>
               </div>
               <h2
@@ -106,18 +99,19 @@
 <script setup>
 import { ref, onMounted, computed } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { IonPage, IonHeader, IonToolbar, IonContent } from "@ionic/vue";
+import { IonPage, IonHeader, IonToolbar, IonContent, IonSegment, IonSegmentButton } from "@ionic/vue";
 import { caretDownOutline, searchOutline } from "ionicons/icons";
 import axios from "axios";
 import moment from "moment";
 
-const apiUrl = "http://localhost:5000/api/v1";
+const apiUrl = "https://amused-pink-caridea.cyclic.app/api/v1";
 
 // Data untuk ditampilkan pada tampilan
 const totalIncome = ref(0);
 const totalExpense = ref(0);
 const netIncome = ref(0);
 const transactions = ref([]);
+const saldo = ref(0);
 
 const selectedMonth = ref("now");
 
@@ -159,10 +153,29 @@ const currentMonth = moment().format("MM");
 const currentYear = moment().format("YYYY");
 
 // Fungsi untuk mengambil data transaksi dari API
+
+const fetchSaldo = async () => {
+  try {
+    const token = localStorage.getItem("authToken");
+    const response = await axios.get(`${apiUrl}/user`, {
+      headers: {
+        Authorization: `${token}`,
+      },
+    });
+    const saldoData = response.data.saldo;
+    saldo.value = saldoData;
+  } catch (error) {
+    console.log(error.message);
+    throw new Error("Failed to fetch saldo");
+  }
+}
+
 const fetchTransactions = async () => {
   try {
     const token = localStorage.getItem("authToken");
-    const response = await axios.get(
+
+    // Ambil data bulan ini
+    const currentMonthResponse = await axios.get(
       `${apiUrl}/monthly-transaction?month=${currentMonth}&year=${currentYear}`,
       {
         headers: {
@@ -170,55 +183,61 @@ const fetchTransactions = async () => {
         },
       }
     );
-    const { expenses, incomes } = response.data;
+    const { expenses: currentMonthExpenses, incomes: currentMonthIncomes } = currentMonthResponse.data;
 
-    totalIncome.value = incomes.reduce(
-      (total, income) => total + income.amount,
-      0
+    // Ambil data bulan lalu
+    const lastMonth = moment().subtract(1, "month").format("MM");
+    const lastMonthResponse = await axios.get(
+      `${apiUrl}/monthly-transaction?month=${lastMonth}&year=${currentYear}`,
+      {
+        headers: {
+          Authorization: `${token}`,
+        },
+      }
     );
-    totalExpense.value = expenses.reduce(
-      (total, expense) => total + expense.amount,
-      0
-    );
+    const { expenses: lastMonthExpenses, incomes: lastMonthIncomes } = lastMonthResponse.data;
+
+    totalIncome.value = currentMonthIncomes.reduce((total, income) => total + income.amount, 0);
+    totalExpense.value = currentMonthExpenses.reduce((total, expense) => total + expense.amount, 0);
     netIncome.value = totalIncome.value - totalExpense.value;
-    transactions.value = [...expenses, ...incomes];
+    transactions.value = [...currentMonthExpenses, ...currentMonthIncomes, ...lastMonthExpenses, ...lastMonthIncomes];
   } catch (error) {
-    if(error.response.status === 401) {
-      window.location.href = '/login';
+    if (error.response.status === 401) {
+      window.location.href = "/login";
     }
   }
 };
 
+
 // Fungsi untuk mengubah angka menjadi format rupiah
-const formatCurrency = (amount) => {
-  return new Intl.NumberFormat("id-ID", {
-    style: "currency",
-    currency: "IDR",
-  }).format(amount);
-};
+function formatCurrency(angka) {
+  return angka.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+}
 
 const filteredTransactions = computed(() => {
-  if (selectedMonth.value === "past") {
-    const lastMonth = moment().subtract(1, "month").format("MM");
-    return transactions.value.filter((transaction) => {
-      const transactionMonth = moment(transaction.date).format("MM");
+  const sortedTransactions = [...transactions.value].sort((a, b) => {
+    const dateA = a.type === 'income' ? a.createdAt : a.date;
+    const dateB = b.type === 'income' ? b.createdAt : b.date;
+    return moment(dateB).diff(moment(dateA));
+  });
+
+  if (selectedMonth.value === 'past') {
+    const lastMonth = moment().subtract(1, 'month').format('MM');
+    const data = sortedTransactions.filter((transaction) => {
+      const transactionMonth = moment(transaction.date || transaction.createdAt).format('MM');
       return transactionMonth === lastMonth;
     });
-  } else if (selectedMonth.value === "future") {
-    const nextMonth = moment().add(1, "month").format("MM");
-    return transactions.value.filter((transaction) => {
-      const transactionMonth = moment(transaction.date).format("MM");
-      return transactionMonth === nextMonth;
-    });
+    return data;
   } else {
-    return transactions.value.filter((transaction) => {
-      const transactionMonth = moment(transaction.date).format("MM");
-      return transactionMonth === currentMonth.value;
+    return sortedTransactions.filter((transaction) => {
+      const transactionMonth = moment(transaction.date || transaction.createdAt).format('MM');
+      return transactionMonth === currentMonth;
     });
   }
 });
 
 onMounted(() => {
+  fetchSaldo();
   fetchTransactions();
 });
 </script>

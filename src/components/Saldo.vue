@@ -44,7 +44,7 @@ let handleSaldo = () => {
 onMounted(async () => {
   try {
     const token = localStorage.getItem('authToken');
-    const response = await axios.get('http://localhost:5000/api/v1/user', {
+    const response = await axios.get('https://amused-pink-caridea.cyclic.app/api/v1/user', {
       headers: {
         Authorization: `${token}`
       }

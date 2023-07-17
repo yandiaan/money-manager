@@ -1,3 +1,4 @@
+
 <template>
   <div>
     <div class="report">
@@ -34,7 +35,7 @@
               <img :src="expense.icon" alt="food" />
               <span>
                 <h6>{{ expense.category }}</h6>
-                <small>Rp. {{ expense.amount }}</small>
+                <small>Rp. {{ formatRibuan(expense.amount) }}</small>
               </span>
             </div>
             <span class="percentage">{{ expense.percentage }}%</span>
@@ -76,8 +77,11 @@ const chartOptions = ref({
   responsive: true,
 });
 
+const selectedSegment = ref("minggu");
+const selectedSegmentLabel = ref("Minggu");
+
 const chartData = ref({
-  labels: ["Minggu Lalu", "Minggu Ini"],
+  labels: [`Minggu lalu`,`Minggu Ini`],
   datasets: [
     {
       label: ["Laporan Pengeluaran"],
@@ -87,9 +91,8 @@ const chartData = ref({
     },
   ],
 });
-const selectedSegment = ref("minggu");
-const selectedSegmentLabel = ref("Minggu");
-const totalExpenses = ref([]);
+
+const totalExpenses = ref([0, 0]);
 const topExpenses = ref([]);
 const loaded = ref(false);
 
@@ -97,39 +100,87 @@ const fetchData = async () => {
   const token = localStorage.getItem("authToken");
 
   try {
-    const responseCurrentWeek = await axios.post(
-      "http://localhost:5000/api/v1/expense/last-week",
-      null,
-      {
-        headers: {
-          Authorization: `${token}`,
+    if (selectedSegment.value === "minggu") {
+      const responseCurrentWeek = await axios.post(
+        "https://amused-pink-caridea.cyclic.app/api/v1/expense/last-week",
+        null,
+        {
+          headers: {
+            Authorization: `${token}`,
+          },
+        }
+      );
+      const responseLastWeek = await axios.post(
+        "https://amused-pink-caridea.cyclic.app/api/v1/expense/last-week",
+        {
+          startDate: "2023-07-01",
+          endDate: "2023-07-05",
         },
-      }
-    );
-    const responseLastWeek = await axios.post(
-      "http://localhost:5000/api/v1/expense/last-week",
-      {
-        startDate: "2023-07-01",
-        endDate: "2023-07-05",
-      },
-      {
-        headers: {
-          Authorization: `${token}`,
-        },
-      }
-    );
-    const dataCurrent = responseCurrentWeek.data;
-    const dataLast = responseLastWeek.data;
+        {
+          headers: {
+            Authorization: `${token}`,
+          },
+        }
+      );
+      const dataCurrent = responseCurrentWeek.data;
+      const dataLast = responseLastWeek.data;
 
-    totalExpenses.value[0] = calculateTotalExpenses(dataLast);
-    totalExpenses.value[1] = calculateTotalExpenses(dataCurrent);
-    topExpenses.value = getTopExpenses([...dataLast, ...dataCurrent], 3);
-    chartData.value.datasets[0].data = [
-      totalExpenses.value[0],
-      totalExpenses.value[1],
-    ];
+      totalExpenses.value[0] = calculateTotalExpenses(dataLast);
+      totalExpenses.value[1] = calculateTotalExpenses(dataCurrent);
+      topExpenses.value = getTopExpenses([...dataLast, ...dataCurrent], 3, "expense");
+      chartData.value.datasets[0].data = [totalExpenses.value[0], totalExpenses.value[1]];
+    } else if (selectedSegment.value === "bulan") {
+      totalExpenses.value = [0,0];
+      loaded.value = false;
+      const currentMonth = moment().month() + 1; // Bulan saat ini
+      const currentYear = moment().year(); // Tahun saat ini
+      const lastMonth = currentMonth - 1; // Bulan sebelumnya
+      const lastYear = currentYear;
 
+      // Mengambil data bulan ini
+      const responseCurrentMonth = await axios.get(
+        "https://amused-pink-caridea.cyclic.app/api/v1/monthly-transaction",
+        {
+          params: {
+            month: currentMonth,
+            year: currentYear,
+          },
+          headers: {
+            Authorization: `${token}`,
+          },
+        }
+      );
+      const dataCurrentMonth = responseCurrentMonth.data;
+
+      totalExpenses.value[1] = calculateTotalExpenses(dataCurrentMonth.expenses);
+
+      // Mengambil data bulan sebelumnya
+      const responseLastMonth = await axios.get(
+        "https://amused-pink-caridea.cyclic.app/api/v1/monthly-transaction",
+        {
+          params: {
+            month: lastMonth,
+            year: lastYear,
+          },
+          headers: {
+            Authorization: `${token}`,
+          },
+        }
+      );
+      const dataLastMonth = responseLastMonth.data;
+      totalExpenses.value[0] = calculateTotalExpenses(dataLastMonth.expenses);
+
+      // Menggabungkan data pengeluaran bulan ini dan bulan sebelumnya untuk pengeluaran teratas dan data grafik
+      topExpenses.value = getTopExpenses(
+        [...dataLastMonth.expenses, ...dataCurrentMonth.expenses],
+        3,
+        "expense"
+      );
+      chartData.value.labels = [`${selectedSegmentLabel.value} lalu`,`${selectedSegmentLabel.value} ini`];
+      chartData.value.datasets[0].data = [totalExpenses.value[0], totalExpenses.value[1]];
+    }
     loaded.value = true;
+
   } catch (error) {
     console.log(error);
     if (error.response && error.response.status === 401) {
@@ -158,13 +209,15 @@ const calculateTotalExpenses = (expenses) => {
   return total;
 };
 
-const getTopExpenses = (expenses, limit) => {
+const getTopExpenses = (expenses, limit, type) => {
   const startDate = moment().subtract(2, "week");
   const endDate = moment().endOf("day");
 
   const filteredExpenses = expenses.filter((expense) => {
     const expenseDate = moment(expense.date);
-    return expenseDate.isBetween(startDate, endDate, null, "[]");
+    return (
+      expense.type === type && expenseDate.isBetween(startDate, endDate, null, "[]")
+    );
   });
 
   const categoryExpenses = filteredExpenses.reduce((acc, expense) => {
@@ -183,8 +236,7 @@ const getTopExpenses = (expenses, limit) => {
   const topExpenses = sortedExpenses.slice(0, limit).map((entry) => {
     const [category, amount] = entry;
     const percentage = (
-      (amount / calculateTotalExpenses(expenses, "lastWeek")) *
-      100
+      (amount / calculateTotalExpenses(expenses)) * 100
     ).toFixed(2);
     const icon = getCategoryIcon(category);
 
@@ -217,6 +269,7 @@ onMounted(() => {
   fetchData();
 });
 </script>
+
 
 <style scoped>
 ion-card-content,
